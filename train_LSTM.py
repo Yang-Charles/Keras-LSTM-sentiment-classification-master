@@ -85,10 +85,7 @@ print('Build model...')
 
 model = Sequential() #初始化一个神经网络
 
-#model.add(Embedding(len(dict)+1, 256))
 model.add(Embedding(len(dict)+1, 256, input_length=maxlen))#词向量
-#model.add(LSTM(256, 128)) # try using a GRU instead, for fun
-#model.add(LSTM(output_dim = 128,activation = 'sigmoid',inner_activation = 'hard_sigmoid')) #input_shape = 128 try using a GRU instead,for fun
 
 #LSTM模型
 model.add(LSTM(activation="sigmoid", units=128, recurrent_activation="hard_sigmoid"))#activation="sigmoid"
@@ -98,8 +95,6 @@ model.add(Activation('softmax'))#激活函数有：sigmoid，tanh，ReLUs，Soft
 #目标函数，或称损失函数,binary_crossentropy:对二分类问题,计算在所有预测值上的平均正确率
 model.compile(optimizer='Adam', loss='binary_crossentropy', metrics=['accuracy'])#SGD,RMSprop,Adagrad,Adadelta,Adam,
 #model.fit(x_train,y_train,batch_size=16,epochs = 10,verbose=1,validation_data = (x_test,y_test))
-
-#nb_epochs has been renamed `epochs`
 score = model.evaluate(x_test, y_test, verbose=1)#通过验证集的数据显示model的性能.
 
 #batch_size：每一次迭代样本数目
