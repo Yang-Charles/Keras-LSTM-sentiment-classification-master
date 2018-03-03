@@ -5,7 +5,6 @@
 
 3.relu should be used in what layer? The answer is that in addition to the last layer of softmax use tanh, other layers can be.
 
-
 4. On the proportion of Dropout, the paper said to be 0.5, but I found that 0.25 is better, which may need to be adjusted according to the data
 
 5. After adding the Dropout layer, adjust the Dropout parameters to reduce the risk of over-fitting, but the setting of this hyper-parameter requires experience, or how many times to try. But still can not avoid over fitting phenomenon. Keras provides a callback function EarlyStopping (),
