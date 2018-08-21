@@ -14,93 +14,87 @@ from keras.utils import np_utils
 from keras.models import Sequential
 from keras.layers.core import Dense,Dropout,Activation
 from keras.layers.embeddings import Embedding
-from keras.layers.recurrent import LSTM,GRU #GRU(Gated Recurrent Unit,相比LSTM模型参数减少，性能不相上下)
+from keras.layers.recurrent import LSTM,GRU #GRU(Gated Recurrent Unit)
 
-# from __future__ import absolute_import #导入3.x 的特征函数
-# from __future__ import print_function
-#给训练语聊贴上标签
+
+# train Corpus Labeling
 neg = pd.read_excel('neg.xls', header=None, index=None)
 neg['mark'] = 0
-pos = pd.read_excel('pos.xls', header=None, index=None)#读取训练预料完毕
+pos = pd.read_excel('pos.xls', header=None, index=None)
 pos['mark'] = 1
 
-# #从直方图以及每个文件的平均字数,来设置的最大序列长度值
-# numWords = []
-# line = neg.readline()
-# counter = len(line.split())
-# numWords.append(counter)
-# import matplotlib.pyplot as plt
-# plt.hist(numWords, 50)
-# plt.xlabel('Sequence Length')
-# plt.ylabel('Frequency')
-# plt.axis([0, 1200, 0, 8000])
-# plt.show()
+# The maximum sequence length value set from the histogram and the average number of words per file
+numWords = []
+line = neg.readline()
+counter = len(line.split())
+numWords.append(counter)
+import matplotlib.pyplot as plt
+plt.hist(numWords, 50)
+plt.xlabel('Sequence Length')
+plt.ylabel('Frequency')
+plt.axis([0, 1200, 0, 8000])
+plt.show()
 
 
-#正负语聊进行合并
-pn = pd.concat([pos, neg], ignore_index=True) #pn = neg.append(pos,index = None)
+#Positive and negative corpus for consolidation
+pn = pd.concat([pos, neg], ignore_index=True)
 neglen = len(neg)
-poslen = len(pos)#计算语料数目
+poslen = len(pos)
 print('negative length:', neglen)
 print('postive length:', poslen)
 
-cw = lambda x:list(jieba.cut(x))#定义分词函数
+# segmentation
+cw = lambda x:list(jieba.cut(x))
 # def cw(x):
 #     return list(jieba.cut(x))
-# lambda作为一个表达式，定义了一个匿名函数，代码中x为入口参数，list(jieba.cut(x))为函数体
 pn['words'] = pn[0].apply(cw)
 
-#读入评论内容
+#Read in the comments and segmentation
 comment = pd.read_excel('sum.xls')
-comment = comment[comment['rateContent'].notnull()]#仅读取非空评论
-comment['words'] = comment['rateContent'].apply(cw)# 评论分词
+comment = comment[comment['rateContent'].notnull()]#Read only non-empty comments
+comment['words'] = comment['rateContent'].apply(cw)#
 
-d2v_train = pd.concat([pn['words'],comment['words']],ignore_index = True)
+d2v_train = pd.concat([pn['words'], comment['words']], ignore_index = True)
 
-w = []  #将所有词语整合在一起
+# Integrate all corpora
+w = []  
 for i in d2v_train:
     w.extend(i)
-
-dict = pd.DataFrame(pd.Series(w).value_counts()) #统计词的出现次数
-del w, d2v_train #del删除的是变量，而不是数据
+dict = pd.DataFrame(pd.Series(w).value_counts()) #Statistics occurrences
+del w, d2v_train #Deleted variables, not data
 dict['id'] = list(range(1, len(dict) + 1))
-
 get_sent = lambda x: list(dict['id'][x])
 pn['sent'] = pn['words'].apply(get_sent)
 
-maxlen = 50 #截断字数
+maxlen = 50 
 print("Pad sequence (samples x time)")
-pn['sent'] = list(sequence.pad_sequences(pn['sent'], maxlen=maxlen))#短于该长度的序列都会在后部填充0以达到该长度。长于nb_timesteps的序列将会被截断，以使其匹配目标长度
-
+pn['sent'] = list(sequence.pad_sequences(pn['sent'], maxlen=maxlen))
 print(pn)
 
 
-x_train = np.array(list(pn['sent']))[::2] #训练集
+x_train = np.array(list(pn['sent']))[::2] 
 y_train = np.array(list(pn['mark']))[::2]
-x_test = np.array(list(pn['sent']))[1::2] #测试集
+x_test = np.array(list(pn['sent']))[1::2] 
 y_test = np.array(list(pn['mark']))[1::2]
-x_all = np.array(list(pn['sent'])) #全集
+x_all = np.array(list(pn['sent'])) 
 y_all = np.array(list(pn['mark']))
 print('Build model...')
 
-model = Sequential() #初始化一个神经网络
+#Initialize a neural network
+model = Sequential() 
+#Embedding
+model.add(Embedding(len(dict)+1, 256, input_length=maxlen))
 
-model.add(Embedding(len(dict)+1, 256, input_length=maxlen))#词向量
-
-#LSTM模型
-model.add(LSTM(activation="sigmoid", units=128, recurrent_activation="hard_sigmoid"))#activation="sigmoid"
-model.add(Dropout(0.3))#Dropout：防止过拟合
-model.add(Dense(1))#Dense:全联接层定义它有1个输出的 feature。同样的，此处不需要再定义输入的维度，因为它接收的是上一层的输出。
-model.add(Activation('softmax'))#激活函数有：sigmoid，tanh，ReLUs，Softplus,softmax ...
-#目标函数，或称损失函数,binary_crossentropy:对二分类问题,计算在所有预测值上的平均正确率
+#LSTM
+model.add(LSTM(activation="sigmoid", units=128, recurrent_activation="hard_sigmoid"))
+#Dropout
+model.add(Dropout(0.3))
+#Dense
+model.add(Dense(1))
+model.add(Activation('softmax'))
 model.compile(optimizer='Adam', loss='binary_crossentropy', metrics=['accuracy'])#SGD,RMSprop,Adagrad,Adadelta,Adam,
 #model.fit(x_train,y_train,batch_size=16,epochs = 10,verbose=1,validation_data = (x_test,y_test))
-score = model.evaluate(x_test, y_test, verbose=1)#通过验证集的数据显示model的性能.
-
-#batch_size：每一次迭代样本数目
-#show_accuracy：每个epoch是否显示分类正确率
-#verbose: 0 表示不更新日志, 1 更新日志
-#validation_data: tuple (X, y) 数据作为验证集. 将加载validation_split.
+score = model.evaluate(x_test, y_test, verbose=1)
 
 
 #print('Test score:',score[0])
@@ -119,7 +113,7 @@ plt.scatter(result.epoch,result.history['acc'],marker='*')
 plt.scatter(result.epoch,result.history['val_acc'])
 plt.xlabel('epochs')
 plt.ylabel('accuracy')
-plt.legend(loc='lower right')#loc表示位置的
+plt.legend(loc='lower right')
 plt.show()
 
 plt.figure
