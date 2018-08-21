@@ -1,4 +1,4 @@
-Text binary classification by training sentiment corpus through LSTM(Long Short-Term Memory)
+Text sentiment binary classification by LSTM(Long Short-Term Memory)
 
 1. Database: Data source Mining Tmall user product reviews originate from Tmall.com
 2. Data pretreatment: to the mean, normalized and Text segmentation
